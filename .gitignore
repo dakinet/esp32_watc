@@ -1,0 +1,20 @@
+# PlatformIO
+.pio/
+.vscode/
+
+# Node.js
+server/node_modules/
+
+# Claude IDE
+.claude/
+
+# Documentation and binaries from manufacturer
+ESP32S3-NxxRxx-128I80T_开发板 V1.01/
+
+# Other
+*.bak
+*.tmp
+nul
+PROJEKAT.txt
+firmware/good_bl_and_pt.bin
+temp_fw/

@@ -1,0 +1,112 @@
+================================================================================
+  ESP32-S3 DISPLAY BOARD - HARDVERSKE BELESKE I SAZNANJA
+================================================================================
+
+PLOCA:
+  ESP32S3-NxxRxx-128I80T (1.28" okrugli TFT sa GC9A01)
+  Chip: ESP32-S3 (QFN56) revision v0.2
+  Features: WiFi, BLE, Embedded PSRAM 16MB (AP_1v8)
+  Crystal: 40MHz
+  USB mode: USB-Serial/JTAG
+  MAC: 90:e5:b1:cd:2c:50
+
+================================================================================
+KRITICNO - PLATFORMIO KONFIGURACIJA (platformio.ini):
+================================================================================
+
+  BOOTLOADER PROBLEM (reseno 2026-02-11):
+    PlatformIO generise bootloader sa POGRESNIM flash frequency nibble-om
+    (0x3 umesto 0x4), sto izaziva boot loop (rst:0x3 RTC_SW_SYS_RST).
+
+    RESENJE: Koristimo bootloader iz zvanicnog FullFunctionTest BIN-a.
+    Fajl: ESP32S3-NxxRxx-128I80T_开发板 V1.01\示例代码\FullFunctionTest\BIN\0x0target.bin
+    Offset 0x0 do 0x10000 sadrzi bootloader + partition table + otadata.
+
+    PROCEDURA ZA FLASH:
+      1. pio run (samo build, BEZ upload)
+      2. esptool flash good_bl_and_pt.bin na 0x0 + firmware.bin na 0x10000
+      Skripta: firmware/flash_with_good_bootloader.py
+
+  FLASH PODESAVANJA (iz radnog BIN headera):
+    Flash mode: DIO (0x02) - NE QIO!
+    Flash speed nibble: 0x4 (80MHz za ESP32-S3)
+    Flash size nibble: 0xf (16MB)
+
+  platformio.ini podesavanja:
+    board_build.flash_mode = dio
+    board_build.flash_size = 16MB
+    board_build.psram_type = opi
+    board_build.arduino.memory_type = dio_opi
+    board_build.f_flash = 80000000L
+    board_build.partitions = default_16MB.csv
+    -DBOARD_HAS_PSRAM (u build_flags)
+
+================================================================================
+PARTITION TABLE (iz radnog BIN-a):
+================================================================================
+
+  nvs       type=1 subtype=0x02 offset=0x009000 size=20KB
+  otadata   type=1 subtype=0x00 offset=0x00e000 size=8KB
+  app0      type=0 subtype=0x10 offset=0x010000 size=3072KB (3MB)
+  app1      type=0 subtype=0x11 offset=0x310000 size=3072KB (3MB)
+  ffat      type=1 subtype=0x81 offset=0x610000 size=10112KB (~10MB)
+  coredump  type=1 subtype=0x03 offset=0xff0000 size=64KB
+
+================================================================================
+PINOUT (iz zvanicnog primera i PROJEKAT.txt):
+================================================================================
+
+  GC9A01 displej (I80 8-bit paralelni):
+    DC=18, CS=2, WR=3, RD=-1, RST=21
+    D0=10, D1=11, D2=12, D3=13, D4=14, D5=15, D6=16, D7=17
+    Backlight=42 (PWM)
+    IPS=true (invert=true u LovyanGFX)
+
+  CST816 Touch:
+    I2C addr=0x15, SDA=8, SCL=9, RST=0
+    Chip IDs: CST716=0x20, CST816S=0xB4, CST816T=0xB5, CST816D=0xB6
+
+  Ostalo (iz FullFunctionTest):
+    WS2812 LED: pin 46 (2 LED-a)
+    Battery ADC: pin 1
+    TCA6408 expander: I2C addr=0x20, INT=45
+    SD Card: MISO=48, SCK=41, MOSI=47, CS=40
+    QMI8658 IMU: na I2C busu
+    PCF85063 RTC: I2C addr=0x51
+
+================================================================================
+UPLOAD PROCEDURA:
+================================================================================
+
+  Posto ESP32-S3 koristi USB-Serial/JTAG, kada se chip resetuje u petlji,
+  USB CDC ne stigne da se inicijalizuje i COM port nestaje.
+
+  Za upload kad je chip u boot loop-u:
+    1. Drzi BOOT dugme
+    2. Pritisni i pusti RESET (dok drzis BOOT)
+    3. Pusti BOOT posle ~1 sekunde
+    4. COM3 bi trebalo da se pojavi
+    5. Pokreni flash_with_good_bootloader.py
+
+  Upload port: COM3 (moze varirati)
+  Upload speed: 921600 baud
+
+================================================================================
+ZVANICNI PRIMER - KLJUCNE RAZLIKE:
+================================================================================
+
+  Zvanicni primer koristi Arduino_GFX_Library (ne LovyanGFX).
+  Nas projekat koristi LovyanGFX - radi ispravno sa istim pinoutom.
+
+  Arduino IDE podesavanja iz zvanicnog primera:
+    Environment: V2.0.17
+    Board: ESP32S3 DEV Module
+    USB CDC On Boot: Enabled
+    Flash Mode: QIO 80MHZ (ali BIN header kaze DIO!)
+    Flash Size: 16MB
+    Partition: 16M Flash (3MB APP/9.9MB FATFS)
+    PSRAM: OPI PSRAM
+
+  PlatformIO: pio = C:\Users\Korisnik\AppData\Roaming\Python\Python310\Scripts\platformio.exe
+
+================================================================================
